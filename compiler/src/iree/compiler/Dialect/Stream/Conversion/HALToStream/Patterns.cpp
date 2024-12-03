@@ -12,6 +12,10 @@
 #include "iree/compiler/Dialect/Stream/IR/StreamOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 
+namespace mlir::iree_compiler::IREE::Encoding {
+bool hasPackedStorageAttr(mlir::RankedTensorType);
+} // namespace mlir::iree_compiler::IREE::Encoding
+
 namespace mlir::iree_compiler {
 
 namespace {
@@ -90,6 +94,11 @@ struct ConvertTensorImportOp
                                                RankedTensorType tensorType,
                                                ValueRange dynamicDims,
                                                OpBuilder &builder) {
+    // If the encoding attr is about packed storage then we don't need all this
+    if (IREE::Encoding::hasPackedStorageAttr(tensorType)) {
+      return success();
+    }
+
     auto expectedElementType = builder.create<IREE::HAL::ElementTypeOp>(
         loc, tensorType.getElementType());
     auto expectedEncodingType = builder.create<IREE::HAL::EncodingTypeOp>(

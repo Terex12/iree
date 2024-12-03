@@ -15,7 +15,13 @@ namespace mlir::iree_compiler {
 
 /// Returns true if the given |bitWidth|, if appearing at runtime-kernel
 /// interface, is less than a byte that should be tightly packed together.
+bool needToPackSubByteElementBitWidth(unsigned bitWidth, bool isPackedStorage);
+
+/// Temporary wrapper for the above function. `isPackedStorage` will be
+/// determined by the cl option. This allows enabling packed storage for i1
+/// in both attribute and cl option ways.
 bool needToPackSubByteElementBitWidth(unsigned bitWidth);
+
 /// Returns true if the given |shapedType|, if appearing at runtime-kernel
 /// interface, has sub-byte element types that should be tightly packed
 /// together.
@@ -27,6 +33,11 @@ bool needToPackSubByteElements(RankedTensorType shapedType);
 /// runtime and kernel. For such cases, we perform tight packing for supported
 /// sub-byte elements, and expand to the next power-of-two bit width for other
 /// cases.
+Type legalizeStorageElementType(Type elementType, bool isPackedStorage);
+
+/// Temporary wrapper for the above function. `isPackedStorage` will be
+/// determined by the cl option. This allows enabling packed storage for i1
+/// in both attribute and cl option ways.
 Type legalizeStorageElementType(Type elementType);
 
 /// Emits IR with the given |builder| to calculate the total number of bytes

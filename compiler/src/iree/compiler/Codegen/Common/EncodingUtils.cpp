@@ -6,6 +6,7 @@
 
 #include "iree/compiler/Codegen/Common/EncodingUtils.h"
 #include "iree/compiler/Codegen/Dialect/Codegen/Utils/Utils.h"
+#include "iree/compiler/Dialect/Encoding/IR/EncodingTypes.h"
 #include "mlir/Dialect/Linalg/IR/LinalgInterfaces.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Utils/IndexingUtils.h"
@@ -64,7 +65,10 @@ MaterializeEncodingConversionTarget::MaterializeEncodingConversionTarget(
   markUnknownOpDynamicallyLegal([](Operation *op) {
     auto typeHasEncoding = [](Type t) -> bool {
       auto tensorType = dyn_cast<RankedTensorType>(t);
-      return tensorType && tensorType.getEncoding();
+      if (!(tensorType && tensorType.getEncoding()))
+        return false;
+      // Allow iree_encoding::packed_storage to pass through.
+      return !IREE::Encoding::hasPackedStorageAttr(tensorType);
     };
     auto valueHasEncoding = [=](Value v) -> bool {
       return typeHasEncoding(v.getType());
