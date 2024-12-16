@@ -44,7 +44,7 @@ def EncodingOpTypeAttr:
 
 def PackedStorageAttr : IREEEncoding_Attr<"PackedStorage"> {
   let mnemonic = "packed_storage";
-  let summary = [{Indicates packed storage datatype.}];
+  let summary = [{Indicates packed storage data type.}];
   let description = [{
     This attribute indicates this is a back-to-back packed storage in memory.
     This attribute takes no arguments.
