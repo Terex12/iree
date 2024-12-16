@@ -65,7 +65,8 @@ MaterializeEncodingConversionTarget::MaterializeEncodingConversionTarget(
   markUnknownOpDynamicallyLegal([](Operation *op) {
     auto typeHasEncoding = [](Type t) -> bool {
       auto tensorType = dyn_cast<RankedTensorType>(t);
-      if (!(tensorType && tensorType.getEncoding()))
+      if (!(tensorType && dyn_cast_or_null<IREE::Encoding::EncodingAttr>(
+                              tensorType.getEncoding())))
         return false;
       // Allow iree_encoding::packed_storage to pass through.
       return !IREE::Encoding::hasPackedStorageAttr(tensorType);
