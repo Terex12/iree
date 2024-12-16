@@ -6,15 +6,12 @@
 
 #include "iree/compiler/Dialect/Stream/Conversion/HALToStream/Patterns.h"
 
+#include "iree/compiler/Dialect/Encoding/IR/EncodingTypes.h"
 #include "iree/compiler/Dialect/HAL/IR/HALOps.h"
 #include "iree/compiler/Dialect/Stream/Conversion/PatternUtils.h"
 #include "iree/compiler/Dialect/Stream/IR/StreamDialect.h"
 #include "iree/compiler/Dialect/Stream/IR/StreamOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
-
-namespace mlir::iree_compiler::IREE::Encoding {
-bool hasPackedStorageAttr(mlir::RankedTensorType);
-} // namespace mlir::iree_compiler::IREE::Encoding
 
 namespace mlir::iree_compiler {
 
