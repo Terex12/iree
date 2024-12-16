@@ -63,20 +63,18 @@ MaterializeEncodingConversionTarget::MaterializeEncodingConversionTarget(
   // Mark any operation that has operands/results with encoding as
   // illegal.
   markUnknownOpDynamicallyLegal([](Operation *op) {
-    auto typeHasEncoding = [](Type t) -> bool {
+    auto typeHasDataTilingEncoding = [](Type t) -> bool {
       auto tensorType = dyn_cast<RankedTensorType>(t);
-      if (!(tensorType && dyn_cast_or_null<IREE::Encoding::EncodingAttr>(
-                              tensorType.getEncoding())))
+      if (!tensorType)
         return false;
-      // Allow iree_encoding::packed_storage to pass through.
-      return !IREE::Encoding::hasPackedStorageAttr(tensorType);
+      return getEncodingAttr(tensorType) != nullptr;
     };
     auto valueHasEncoding = [=](Value v) -> bool {
-      return typeHasEncoding(v.getType());
+      return typeHasDataTilingEncoding(v.getType());
     };
     bool hasOperandOrResultsWithEncoding =
         llvm::any_of(op->getOperands(), valueHasEncoding) ||
-        llvm::any_of(op->getResultTypes(), typeHasEncoding);
+        llvm::any_of(op->getResultTypes(), typeHasDataTilingEncoding);
     return !hasOperandOrResultsWithEncoding;
   });
 }
