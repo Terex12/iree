@@ -29,12 +29,8 @@ llvm::cl::opt<bool> clEnableI1Support(
 
 namespace mlir::iree_compiler {
 
-bool needToPackSubByteElementBitWidth(unsigned bitWidth) {
-  return needToPackSubByteElementBitWidth(
-      bitWidth, /*isPackedStorage=*/clEnableI1Support);
-}
-
-bool needToPackSubByteElementBitWidth(unsigned bitWidth, bool isPackedStorage) {
+static bool needToPackSubByteElementBitWidthImpl(unsigned bitWidth,
+                                                 bool isPackedStorage) {
   // Enable i1 support if requested.
   if (isPackedStorage && bitWidth == 1) {
     return true;
@@ -46,6 +42,11 @@ bool needToPackSubByteElementBitWidth(unsigned bitWidth, bool isPackedStorage) {
   return bitWidth < 8 && llvm::isPowerOf2_32(bitWidth) && bitWidth != 1;
 }
 
+bool needToPackSubByteElementBitWidth(unsigned bitWidth) {
+  return needToPackSubByteElementBitWidthImpl(
+      bitWidth, /*isPackedStorage=*/clEnableI1Support);
+}
+
 bool needToPackSubByteElements(RankedTensorType shapedType) {
   unsigned bitWidth = IREE::Util::getTypeBitWidth(shapedType.getElementType());
   // Two paths to enable packed storage for i1 tensors: the attribute or cl
@@ -53,15 +54,11 @@ bool needToPackSubByteElements(RankedTensorType shapedType) {
   // tensors with attributes.
   bool isPackedStorage =
       IREE::Encoding::hasPackedStorageAttr(shapedType) || clEnableI1Support;
-  return needToPackSubByteElementBitWidth(bitWidth, isPackedStorage);
+  return needToPackSubByteElementBitWidthImpl(bitWidth, isPackedStorage);
 }
 
-Type legalizeStorageElementType(Type elementType) {
-  return legalizeStorageElementType(elementType,
-                                    /*isPackedStorage=*/clEnableI1Support);
-}
-
-Type legalizeStorageElementType(Type elementType, bool isPackedStorage) {
+static Type legalizeStorageElementTypeImpl(Type elementType,
+                                           bool isPackedStorage) {
   // Only handle integers; floats in MLIR all have aligned widths (today).
   auto intType = dyn_cast<IntegerType>(elementType);
   if (!intType)
@@ -69,7 +66,7 @@ Type legalizeStorageElementType(Type elementType, bool isPackedStorage) {
 
   // For sub-byte elements, default to pack them into bytes.
   unsigned bitWidth = intType.getWidth();
-  if (needToPackSubByteElementBitWidth(bitWidth, isPackedStorage))
+  if (needToPackSubByteElementBitWidthImpl(bitWidth, isPackedStorage))
     return elementType;
 
   // Otherwise, extend them to the next power-of-two bit width.
@@ -79,6 +76,12 @@ Type legalizeStorageElementType(Type elementType, bool isPackedStorage) {
     return elementType;
   return IntegerType::get(elementType.getContext(), alignedBitWidth,
                           intType.getSignedness());
+}
+
+Type legalizeStorageElementType(Type elementType) {
+  // Consider packed storage for i1 tensors if cl opt is set.
+  return legalizeStorageElementTypeImpl(elementType,
+                                        /*isPackedStorage=*/clEnableI1Support);
 }
 
 Value calculateStorageElementCountInBytes(Location loc,
@@ -93,16 +96,16 @@ Value calculateStorageElementCountInBytes(Location loc,
         loc, builder, shapedType, dynamicDims);
   }
 
-  // TODO: remove cl options once frontend can emit packed i1 tensors.
+  // TODO(lialan): remove cl options once frontend can emit packed i1 tensors.
   bool isPackedStorage =
       IREE::Encoding::hasPackedStorageAttr(shapedType) || clEnableI1Support;
-  Type alignedElementType =
-      legalizeStorageElementType(shapedType.getElementType(), isPackedStorage);
+  Type alignedElementType = legalizeStorageElementTypeImpl(
+      shapedType.getElementType(), isPackedStorage);
   unsigned elementBits = IREE::Util::getTypeBitWidth(alignedElementType);
 
   // Calculate all static dims first, if any.
   int64_t staticCount = 1;
-  if (!needToPackSubByteElementBitWidth(elementBits, isPackedStorage)) {
+  if (!needToPackSubByteElementBitWidthImpl(elementBits, isPackedStorage)) {
     staticCount *= IREE::Util::getRoundedElementByteWidth(alignedElementType);
   }
 
@@ -117,7 +120,7 @@ Value calculateStorageElementCountInBytes(Location loc,
     value = builder.createOrFold<arith::MulIOp>(loc, value, dim);
   }
   // Sub-byte packing requires putting multiple elements in the same byte.
-  if (needToPackSubByteElementBitWidth(elementBits, isPackedStorage)) {
+  if (needToPackSubByteElementBitWidthImpl(elementBits, isPackedStorage)) {
     assert(8 % elementBits == 0);
     unsigned byteElements = 8 / elementBits;
     // TODO(antiagainst): We may want to emit runtime check to make sure this is
@@ -140,12 +143,12 @@ Value calculateStorageElementOffsetInBytes(Location loc,
   // TODO: remove cl options once frontend can emit packed i1 tensors.
   bool isPackedStorage =
       IREE::Encoding::hasPackedStorageAttr(originalType) || clEnableI1Support;
-  Type alignedElementType = legalizeStorageElementType(
+  Type alignedElementType = legalizeStorageElementTypeImpl(
       originalType.getElementType(), isPackedStorage);
   unsigned elementBits = IREE::Util::getTypeBitWidth(alignedElementType);
 
   // Sub-byte packing requires putting multiple elements in the same byte.
-  if (needToPackSubByteElementBitWidth(elementBits, isPackedStorage)) {
+  if (needToPackSubByteElementBitWidthImpl(elementBits, isPackedStorage)) {
     Value byteElements =
         builder.create<arith::ConstantIndexOp>(loc, 8 / elementBits);
     // TODO(antiagainst): We may want to emit runtime check to make sure this is

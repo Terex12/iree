@@ -91,7 +91,9 @@ struct ConvertTensorImportOp
                                                RankedTensorType tensorType,
                                                ValueRange dynamicDims,
                                                OpBuilder &builder) {
-    // If the encoding attr is about packed storage then we don't need all this
+    // If the encoding attr is about packed storage then we don't need
+    // assertion, because packed storage attribute is about memory layout and it
+    // doesn't affect the tensor shape.
     if (IREE::Encoding::hasPackedStorageAttr(tensorType)) {
       return success();
     }
