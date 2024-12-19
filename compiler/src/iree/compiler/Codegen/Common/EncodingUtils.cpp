@@ -84,7 +84,8 @@ RankedTensorType dropEncoding(RankedTensorType type) {
 }
 
 RankedTensorType dropPackedStorageEncodingIfAny(RankedTensorType type) {
-  if (!IREE::Encoding::hasPackedStorageAttr(type)) return type;
+  if (!IREE::Encoding::hasPackedStorageAttr(type))
+    return type;
   return RankedTensorType::get(type.getShape(), type.getElementType());
 }
 
