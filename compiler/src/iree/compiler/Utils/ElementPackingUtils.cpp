@@ -59,10 +59,10 @@ static Type legalizeStorageElementTypeImpl(Type elementType,
                           intType.getSignedness());
 }
 
-Type legalizeStorageElementType(Type elementType) {
-  // Consider packed storage for i1 tensors if cl opt is set.
-  return legalizeStorageElementTypeImpl(elementType,
-                                        /*isPackedStorage=*/false);
+Type legalizeTensorStorageElementType(Type type) {
+  auto tensorType = llvm::dyn_cast<RankedTensorType>(type);
+  return legalizeStorageElementTypeImpl(
+      type, tensorType && IREE::Encoding::hasPackedStorageAttr(type));
 }
 
 Value calculateStorageElementCountInBytes(Location loc,
@@ -77,12 +77,10 @@ Value calculateStorageElementCountInBytes(Location loc,
         loc, builder, shapedType, dynamicDims);
   }
 
-  // TODO(lialan): remove cl options once frontend can emit packed i1 tensors.
-  bool isPackedStorage = IREE::Encoding::hasPackedStorageAttr(shapedType);
-  Type alignedElementType = legalizeStorageElementTypeImpl(
-      shapedType.getElementType(), isPackedStorage);
+  Type alignedElementType = legalizeTensorStorageElementType(shapedType);
   unsigned elementBits = IREE::Util::getTypeBitWidth(alignedElementType);
 
+  bool isPackedStorage = IREE::Encoding::hasPackedStorageAttr(shapedType);
   bool isI1WithPackedStorage = elementBits == 1 && isPackedStorage;
 
   // Calculate all static dims first, if any.
@@ -123,12 +121,10 @@ Value calculateStorageElementOffsetInBytes(Location loc,
                                            RankedTensorType originalType,
                                            Value linearizedIndex,
                                            OpBuilder &builder) {
-  // TODO: remove cl options once frontend can emit packed i1 tensors.
-  bool isPackedStorage = IREE::Encoding::hasPackedStorageAttr(originalType);
-  Type alignedElementType = legalizeStorageElementTypeImpl(
-      originalType.getElementType(), isPackedStorage);
+  Type alignedElementType = legalizeTensorStorageElementType(originalType);
   unsigned elementBits = IREE::Util::getTypeBitWidth(alignedElementType);
 
+  bool isPackedStorage = IREE::Encoding::hasPackedStorageAttr(originalType);
   bool isI1WithPackedStorage = elementBits == 1 && isPackedStorage;
 
   // Sub-byte packing requires putting multiple elements in the same byte.
